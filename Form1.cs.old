@@ -1,0 +1,321 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace WindowsFormsApp1
+{
+    public partial class Form1 : Form
+    {
+        private String parentDir = "";
+        private bool filter = true; // assume that it is not function
+
+        public Form1()
+        {
+            InitializeComponent();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            //one_file(textBox1.Text.ToString());
+
+            scan_dir(textBox1.Text.ToString());
+            //**/
+
+        }
+        //debug method
+        private void one_file(String dirPath)
+        {
+            String[] subDirs = Directory.GetDirectories(dirPath);
+            String[] files = Directory.GetFiles(dirPath);
+            //to view file directory
+            //for (int i=0; i < dir.Length; i++)
+            //{
+            //    textBox2.Text += dir[i] + Environment.NewLine;
+            //}
+            //end view file directory
+            foreach (String sub in subDirs)
+            {
+                //Directory.CreateDirectory(textBox3.Text.ToString() + "\\" + Path.GetDirectoryName(sub));
+                textBox2.Text += Path.GetFileName(sub) + Environment.NewLine;
+                //this.parentDir = Path.GetDirectoryName(sub);
+                //scan_dir(sub);
+            }
+            //c_skein.c
+            //ModFile(files[14], Path.GetFileName(files[14]));
+
+        }
+        private void scan_files(String dirPath)
+        {
+            String[] subDirs = Directory.GetDirectories(dirPath);
+            String[] files = Directory.GetFiles(dirPath);
+
+            //ModFile(dir[0], Path.GetFileName(dir[0]));
+            //textBox2.Text = dir[6];
+
+            //**
+            for (int i = 0; i < files.Length; i++)
+            {
+                string ext = Path.GetExtension(files[i]) + Environment.NewLine;
+
+                //    This isolates the files of the directory that are source files c, h, cpp
+                if (ext.StartsWith(".c") || ext.StartsWith(".cpp") || ext.StartsWith(".h"))
+                {
+                    //textBox2.Text += Path.GetFileName(dir[i]) + Environment.NewLine;
+                    ModFile(files[i], Path.GetFileName(files[i]));
+                    //       read a file and then write to a temp file affter every change
+                    //var txtLines = File.ReadAllLines(fileName).ToList();
+                }
+                else
+                {
+                    CopyFile(files[i], Path.GetFileName(files[i]));
+                }
+
+            }
+            foreach(String sub in subDirs){
+                if (sub.Contains(this.parentDir)) {
+                    this.parentDir += "\\" + Path.GetFileName(sub);
+                    Directory.CreateDirectory(textBox3.Text.ToString() + "\\" + this.parentDir);
+                }
+                else {
+                    this.parentDir = Path.GetFileName(sub);
+                    Directory.CreateDirectory(textBox3.Text.ToString() + "\\" + Path.GetFileName(sub));
+                }
+                
+                scan_files(sub);
+            }
+        }
+
+        private void scan_dir(String dir)
+        {
+            //scan_files(dir);
+            this.parentDir = textBox3.Text+"\\"+Path.GetFileName(dir);
+
+            String[] subDirs = Directory.GetDirectories(dir);
+            //Create all sub directories under current directory
+            foreach (string sub in subDirs)
+            {
+
+                Directory.CreateDirectory(this.parentDir+"\\"+sub);
+            }
+            scan_files(dir);
+            foreach (string sub in subDirs)
+            {
+                String tempdir = this.parentDir;
+                tempdir.IndexOf(sub);
+                tempdir += "\\" + sub;
+                scan_files(sub);
+            }
+        }
+
+        private void CopyFile(string filepath, string filename)
+        {
+            textBox2.Text += filepath + Environment.NewLine;
+            StreamReader reader;
+            String line;
+            int i = 1;
+            reader = new StreamReader(@filepath);
+            //write to temp then overwrite the original
+            StreamWriter sw = new StreamWriter(textBox3.Text + "\\" + filename);
+            do
+            {
+                line = reader.ReadLine();
+                sw.WriteLine(line);
+            } while (!reader.EndOfStream);
+            sw.Close();
+            reader.Close();
+            reader.Dispose();
+
+        }
+
+        private void ModFile(string filepath,string filename)
+        {
+            
+                   // String[] txtLines = File.ReadAllLines(v);
+
+            textBox2.Text += filepath+Environment.NewLine;
+            String filestuff ="";
+            StreamReader reader;
+            char ch;
+            String line;
+            String prevline ="";
+            int i = 1;
+            reader = new StreamReader(@filepath);
+            StreamWriter sw;
+            //write to temp then overwrite the original
+
+            //apply the subdirectory names, should run linearly and be fine
+            if (this.parentDir == "") { sw = new StreamWriter(textBox3.Text + "\\" + filename); }
+            else { sw = new StreamWriter(textBox3.Text + "\\" +this.parentDir+"\\"+ filename); }
+            
+            do
+            {
+                //read by char
+                //ch = (char)reader.Read();
+                //sw.Write(ch);
+                //filestuff += ch;
+
+                //read by line
+                line = reader.ReadLine();
+
+                //this does the page number
+                //textBox2.Text += i+".";
+
+                if(prevline == "")
+                {
+                    prevline = line;
+                }
+                sw.WriteLine(line);
+                if (line.Contains('{'))
+                {
+                    Filter(line, prevline);
+                }
+                //filter non functions
+                if (!filter)
+                {
+                    //sw.WriteLine("//This is a test Hello");
+                    //sw.WriteLine(" for (int test=0;test<5;test++) {");
+                    //sw.WriteLine(" int testx =5; ");
+                    //sw.WriteLine(" int testy =8; ");
+                    //sw.WriteLine(" cout<<testx+testy<<endl; ");
+                    //sw.WriteLine(" } ");
+                    //sw.WriteLine("//End test Hello");
+                    //textBox2.Text += dummyCode() + Environment.NewLine;
+                    sw.WriteLine(dummyCode());
+                    this.filter = true;
+                }
+                prevline = line;
+                //this prints the lines works adjacent to the page numbers for testing output
+                //textBox2.Text += Environment.NewLine;
+
+                i++;
+            } while (!reader.EndOfStream);
+            //sw.WriteLine(filestuff);
+            textBox2.Text += filestuff;
+            sw.Close();
+            reader.Close();
+            reader.Dispose();
+
+            //for (int i = 0; i < txtLines.Length; i++)
+            //{
+
+            //  textBox2.Text += txtLines[i];
+
+            //}
+            //this.test1 = false;
+
+            //throw new NotImplementedException();
+        }
+
+
+
+        private string dummyCode()
+        {
+            Random random = new Random();
+            int rnd = random.Next(0, 4);
+            //textBox2.Text += rnd + Environment.NewLine;
+            switch (rnd)
+            {
+                case 0:
+                    return ("//This is a test Hello\n for (int test=0;test<5;test++) {\n int testx =5; \n int testy =8; \n cout<<testx+testy<<endl; \n } \n//End test Hello");
+
+                case 1:
+                    return ("//This is a test Hello\n for (int test=0;test<5;test++) {\n int testx =5; \n int testy =8; \n cout<<testy*testx<<endl; \n } \n//End test Hello");
+
+                case 2:
+                    return ("//This is a test Hello\n int test=0;\n while (test<5) {\n int testx =5; \n int testy =8; \n cout<<testx+testy + test<<endl; \n test++; \n } \n//End test Hello");
+
+                case 3:
+                    return ("//This is a test Hello\n for (int test=0;test<5;test++) {\n int testx =5; \n int testy =8; \n cout<<testx+testy*test<<endl; \n } \n//End test Hello");
+
+                default:
+                    return ("//This is a test Hello\n for (int test=0;test<5;test++) {\n int testx =5; \n int testy =8; \n cout<<test*testx+testy<<endl; \n } \n//End test Hello");
+
+            }
+            //throw new NotImplementedException();
+        }
+
+        private void Filter(string currline, string prevline)
+        {
+            char[] trim = " \f\n\r\t\v".ToCharArray();
+            //currline.
+
+            //is it the case where the  { is on the following line
+
+            //currline.Trim(trim).Substring(0, currline.Trim(trim).IndexOf('{')+1)
+            if (currline.Trim(trim).Substring(0, currline.Trim(trim).IndexOf('{') + 1).Length < 2)
+            {
+                //works with printing lines for testing output
+                //textBox2.Text += prevline  + currline.Trim(trim) + Environment.NewLine;
+
+                Filter(prevline);
+            }
+            // the logic and { are on the same line
+            else
+            {
+                Filter(currline);
+            }
+            //throw new NotImplementedException();
+        }
+
+
+        private void Filter(String line)
+        {
+            //char[] trim = " \f\n\r\t\v".ToCharArray();
+            
+            if (line.Contains("switch")) { }
+            else if (line.StartsWith("if")) { }
+            else if (line.Contains(" else")) { }
+            else if (line.Contains(" for")) { }
+            else if (line.Contains(" while")) { }
+
+            else if (line.Contains(" if")) { }
+            else if (line.Contains("enum")) { }
+            else if (line.Contains("}")) { }
+            else if (line.Contains("//")) { }
+            else if (line.Contains("typedef")) { }
+            else if (line.Contains("extern")) { }
+            else if (line.Contains("class")) { }
+
+            else if (line.Contains("\\")) { }
+            else if (line.Contains("define")) { }
+            else if (line.Contains("FORCE_INLINE")) { }
+            else if (line.Contains("#ifdef")) { }
+            else if (line.Contains("#endif")) { }
+            else if (line.Contains("union")) { }
+            else if (line.Contains(" do")) { }
+
+            //perhaps starts with
+            //careful with starts with
+            else if (line.StartsWith("const")) { }
+            else if (line.StartsWith("struct")) { }
+
+            else if (line.Contains('>')) { }
+            else if (line.Contains('<')) { }
+            else if (line.Contains('=')) { }
+            
+            //otherwise must be a function
+            else
+            {
+                this.filter = false;
+            }
+        }
+
+        private void button2_Click(object sender, EventArgs e)
+        {
+           // this.test = false;
+           // this.test1 = true;
+        }
+
+        private void textBox2_TextChanged(object sender, EventArgs e)
+        {
+
+        }
+    }
+}
